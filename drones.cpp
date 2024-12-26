@@ -614,10 +614,13 @@ bool DronesGame::CheckCollision() {
         if (i == random1 && i == random2) {
             continue;
         }
-        if (position.y < 7) {
-            if (glm::distance(position, glm::vec3(trees[i].first, 0, trees[i].second)) < 1.18) {
+        if (position.y < 1.65) {
+            if (distance(glm::vec2(trees[i].first, trees[i].second), glm::vec2(position.x, position.z)) < 0.7)
                 return true;
-            }
+        }
+        else if (position.y >= 1.65) {
+            if (distance(glm::vec2(trees[i].first, trees[i].second), glm::vec2(position.x, position.z)) < 1.6)
+                return true;
         }
        /* if (position.y >= 7 && position.y < 42) {
             if (glm::distance(position, glm::vec3(trees[i].first, 0, trees[i].second)) < 2) {
