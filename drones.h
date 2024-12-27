@@ -34,10 +34,10 @@ namespace m1
         void RenderTree(float x, float y, float z);
         void RenderPropeller(float angle, glm::mat4 modelMatrix);
         void RenderArrow();
-        void generate_trees();
-        void RenderSimpleMesh(Mesh* mesh, Shader* shader, const glm::mat4& modelMatrix);
+        void generate_trees(float deltaTimeSeconds);
         void RenderPackage(glm::mat4 modelMatrix);
         bool CheckCollision();
+        void ReinitializeMap();
         void OnInputUpdate(float deltaTime, int mods) override;
         void OnKeyPress(int key, int mods) override;
         void OnKeyRelease(int key, int mods) override;
@@ -69,7 +69,8 @@ namespace m1
         bool once_generated, picked, inDropZone;
         ViewportArea miniViewportArea;
         std::vector<std::pair<float, float>> trees, centers;
-        int random1, random2;
+        int random1, random2, score;
+        float x, time1;
         // TODO(student): If you need any other class variables, define them here.
 
     };

@@ -376,11 +376,11 @@ Mesh* CreateTerrain(const std::string& name, glm::vec3 color) {
 }
 
 Mesh* CreateDropZone(const std::string& name, glm::vec3 color) {
-    std::vector<unsigned int> indices;
-    std::vector<VertexFormat> vertices;
+    vector<unsigned int> indices;
+    vector<VertexFormat> vertices;
     const float angleStep = 2.0f * M_PI / 200;
     const float radius = 5.0f;
-    const float height = 20.0f;
+    const float height = 2.0f;
     for (int i = 0; i <= 200; ++i) {
         float angle = i * angleStep;
         vertices.push_back(VertexFormat(glm::vec3(radius * cos(angle), 0.0f, radius * sin(angle)), color));
@@ -409,6 +409,46 @@ Mesh* CreateDropZone(const std::string& name, glm::vec3 color) {
     return dropZone;
 }
 
+Mesh* CreatePointer(const std::string& name) {
+    vector<VertexFormat> vertices = {
+        VertexFormat(glm::vec3(0,0,-1), glm::vec3(0.8, 0.8, 0.0)), //0
+        VertexFormat(glm::vec3(-5,5,-1), glm::vec3(0.8, 0.8, 0.0)), //1
+        VertexFormat(glm::vec3(5,5,-1), glm::vec3(0.8, 0.8, 0.0)), //2
+        VertexFormat(glm::vec3(-2,5,-1), glm::vec3(0.8, 0.8, 0.0)), //3
+        VertexFormat(glm::vec3(2,5,-1), glm::vec3(0.8, 0.8, 0.0)), //4
+        VertexFormat(glm::vec3(-2,10,-1), glm::vec3(0.8, 0.8, 0.0)), //5
+        VertexFormat(glm::vec3(2,10,-1), glm::vec3(0.8, 0.8, 0.0)), //6
+        VertexFormat(glm::vec3(0,0,1), glm::vec3(0.8, 0.8, 0.0)), //7
+        VertexFormat(glm::vec3(-5,5,1), glm::vec3(0.8, 0.8, 0.0)), //8
+        VertexFormat(glm::vec3(5,5,1), glm::vec3(0.8, 0.8, 0.0)), //9
+        VertexFormat(glm::vec3(-2,5,1), glm::vec3(0.8, 0.8, 0.0)), //10
+        VertexFormat(glm::vec3(2,5,1), glm::vec3(0.8, 0.8, 0.0)), //11
+        VertexFormat(glm::vec3(-2,10,1), glm::vec3(0.8, 0.8, 0.0)), //12
+        VertexFormat(glm::vec3(2,10,1), glm::vec3(0.8, 0.8, 0.0)) //13
+    };
+    Mesh* pointer = new Mesh(name);
+    vector<unsigned int> indices = {
+        0, 2, 1,
+        5, 3, 4,
+        5, 4, 6,
+        7, 9, 8,
+        12, 10, 11,
+        12, 11, 13,
+        1, 0, 7, 
+        1, 8, 7,
+        2, 0, 7,
+        2, 7, 9,
+        5, 3, 10,
+        5, 10, 12,
+        6, 4, 11,
+        6, 11, 13,
+        12, 5, 6,
+        12, 6, 13
+
+    };
+    pointer->InitFromData(vertices, indices);
+    return pointer;
+}
 
 
 DronesGame::DronesGame()
@@ -448,6 +488,8 @@ void DronesGame::Init()
     stabilize = false;
     picked = false;
     inDropZone = false;
+    x = 0;
+    score = 0;
 
     camera = new implemented::DroneCamera();
     camera->Set(glm::vec3(0, 2, 3.5f), glm::vec3(0, 1, 0), glm::vec3(0, 1, 0));
@@ -484,6 +526,8 @@ void DronesGame::Init()
     meshes[tree->GetMeshID()] = tree;
     Mesh* dropZone = CreateDropZone("dropZone", glm::vec3(1, 1, 1));
     meshes[dropZone->GetMeshID()] = dropZone;
+    Mesh* pointer = CreatePointer("pointer");
+    meshes[pointer->GetMeshID()] = pointer;
 
     // TODO(student): After you implement the changing of the projection
     // parameters, remove hardcodings of these parameters
@@ -519,14 +563,29 @@ void DronesGame::FrameStart()
     glViewport(0, 0, resolution.x, resolution.y);
 }
 
-void DronesGame::generate_trees() {
+void DronesGame::ReinitializeMap() {
+    int old_random1 = random1;
+    while (random1 == old_random1) {
+        srand(time(0));
+        random1 = rand() % (trees.size());
+    }
+}
+
+void DronesGame::generate_trees(float deltaTimeSeconds) {
+    x += 1;
+    if (inDropZone) {
+        score++;
+        ReinitializeMap();
+        inDropZone = false;
+        picked = false;
+    }
     for (int i = 0; i < trees.size(); i++) {
         auto it = trees[i], it_2 = centers[i];
         if (i == random1 ) {
             if (!picked) {
                 glm::mat4 modelMatrix = glm::mat4(1);
-                modelMatrix = glm::translate(modelMatrix, glm::vec3(it.first, 2, it.second));
-                modelMatrix = glm::scale(modelMatrix, glm::vec3(1));
+                modelMatrix = glm::translate(modelMatrix, glm::vec3(it.first, 1, it.second));
+                modelMatrix = glm::scale(modelMatrix, glm::vec3(2));
                 RenderMesh(meshes["box"], shaders["VertexColor"], modelMatrix);
             }
             continue;
@@ -535,10 +594,9 @@ void DronesGame::generate_trees() {
             glm::mat4 modelMatrix = glm::mat4(1);
             modelMatrix = glm::translate(modelMatrix, glm::vec3(it_2.first, 0, it_2.second));
             RenderMesh(meshes["dropZone"], shaders["VertexColor"], modelMatrix);
-            if (inDropZone) {
-                modelMatrix = glm::translate(modelMatrix, glm::vec3(0, 3, 0));
-                RenderMesh(meshes["box"], shaders["VertexColor"], modelMatrix);
-            }
+            modelMatrix = glm::translate(modelMatrix, glm::vec3(0, 7 + 2 * cos(x * 0.05), 0));
+            modelMatrix = glm::rotate(modelMatrix, x * 0.005f, glm::vec3(0, 1, 0));
+            RenderMesh(meshes["pointer"], shaders["VertexColor"], modelMatrix);
             continue;
         }
         glm::mat4 modelMatrix = glm::mat4(1);
@@ -562,21 +620,17 @@ void DronesGame::Update(float deltaTimeSeconds)
     RenderMesh(meshes["terrain"], shaders["Shader"], modelMatrix);
     modelMatrix = glm::mat4(1);
     modelMatrix = glm::scale(modelMatrix, glm::vec3(0.05f));
-    generate_trees();
-    
-    /*DrawCoordinateSystem(camera->GetViewMatrix(), projectionMatrix);*/
+    generate_trees(deltaTimeSeconds);
     glViewport(miniViewportArea.x, miniViewportArea.y, miniViewportArea.width, miniViewportArea.height);
     glClear(GL_DEPTH_BUFFER_BIT);
     projectionMatrix = glm::ortho(-1.0f, 1.0f, -1.0f, 1.0f, 0.01f, 200.0f);
     camera_above->position.x = camera->GetTargetPosition().x;
     camera_above->position.y = camera->GetTargetPosition().y ;
     camera_above->position.z = camera->GetTargetPosition().z;
-    //RenderArrow();
     DrawCoordinateSystem(camera_above->GetViewMatrix(), projectionMatrix);
     modelMatrix = glm::mat4(1);
     modelMatrix = glm::translate(modelMatrix, glm::vec3(-25, 0, -25));
     RenderMesh(meshes["terrain"], shaders["Shader"], modelMatrix);
-    cout << camera->GetTargetPosition().y << "\n";
 }
 
 void DronesGame::RenderArrow() {
@@ -611,22 +665,29 @@ bool DronesGame::CheckCollision() {
     glm::vec3 size = glm::vec3(40, 6, 40);
 
     for (int i = 0; i < trees.size(); i++) {
-        if (i == random1 && i == random2) {
+        if (i == random1 || i == random2) {
             continue;
         }
         if (position.y < 1.65) {
             if (distance(glm::vec2(trees[i].first, trees[i].second), glm::vec2(position.x, position.z)) < 0.7)
                 return true;
         }
-        else if (position.y >= 1.65) {
-            if (distance(glm::vec2(trees[i].first, trees[i].second), glm::vec2(position.x, position.z)) < 1.6)
+        else if (position.y >= 1.65 && position.y < 4) {
+            if (distance(glm::vec2(trees[i].first, trees[i].second), glm::vec2(position.x, position.z)) < 1.6 - 0.3 * (position.y - 1.6))
                 return true;
         }
-       /* if (position.y >= 7 && position.y < 42) {
-            if (glm::distance(position, glm::vec3(trees[i].first, 0, trees[i].second)) < 2) {
+        else if (position.y >= 4 && position.y < 6.8) {
+            if (distance(glm::vec2(trees[i].first, trees[i].second), glm::vec2(position.x, position.z)) < 1.1 - 0.4 * (position.y - 4.18))
                 return true;
-            }
-        }*/
+        }
+        if (position.x > 25)
+            return true;
+        if (position.x < -25)
+            return true;
+        if (position.z > 25)
+            return true;
+        if (position.z < -25)
+            return true;
     }
     return false;
 }
@@ -651,6 +712,7 @@ void DronesGame::RenderDrone() {
     if (picked && !inDropZone) {
         RenderPackage(modelMatrix);
     }
+    
 }
 void DronesGame::RenderPackage(glm::mat4 modelMatrix) {
     modelMatrix = glm::translate(modelMatrix, glm::vec3(0, -40, 0));
@@ -726,15 +788,9 @@ void DronesGame::OnInputUpdate(float deltaTime, int mods)
                 camera->TranslateUpward(-0.01 * cameraSpeed);
         }
 
-
-        if (window->KeyHold(GLFW_KEY_Q)) {
-            // TODO(student): Translate the camera downward
-            camera->TranslateUpward(0.01 * cameraSpeed);
-
-        }
         if (window->KeyHold(GLFW_KEY_E)) {
             // TODO(student): Translate the camera upward
-            if (camera->GetTargetPosition().y > 0.01)
+            if (camera->GetTargetPosition().y > 1)
                 camera->TranslateUpward(-0.01 * cameraSpeed);
         }
 
@@ -788,6 +844,7 @@ void DronesGame::OnKeyPress(int key, int mods)
         cout << distance << "\n";
         if (distance <= 2) {
             picked = true;
+            time1 = 0;
         }
     }
 
@@ -802,6 +859,12 @@ void DronesGame::OnKeyPress(int key, int mods)
         if (distance <= 2) {
             inDropZone = true;
         }
+    }
+    if (key == GLFW_KEY_0) {
+        cout << "----------------\n";
+        cout << "Score: " << score << "\n";
+        //cout << "Time: " << time << "\n";
+        cout << "----------------\n\n";
     }
 
 
