@@ -38,6 +38,7 @@ namespace m1
         void RenderPackage(glm::mat4 modelMatrix);
         bool CheckCollision();
         void ReinitializeMap();
+        void DronesGame::RenderScoreBar(glm::mat4 modelMatrix);
         void OnInputUpdate(float deltaTime, int mods) override;
         void OnKeyPress(int key, int mods) override;
         void OnKeyRelease(int key, int mods) override;

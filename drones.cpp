@@ -450,6 +450,66 @@ Mesh* CreatePointer(const std::string& name) {
     return pointer;
 }
 
+Mesh* CreateLifeBar(
+    const std::string& name,
+    glm::vec3 color,
+    bool fill)
+{
+    std::vector<VertexFormat> vertices =
+    {
+        VertexFormat(glm::vec3(-27, 4, 0), color), //0
+        VertexFormat(glm::vec3(27, 4, 0), color), //1
+        VertexFormat(glm::vec3(27, -4, 0), color),  //2
+        VertexFormat(glm::vec3(-27, -4, 0), color),  //3
+        VertexFormat(glm::vec3(-25, 2, 0), color),  //4
+        VertexFormat(glm::vec3(25, 2, 0), color),   //5
+        VertexFormat(glm::vec3(25, -2, 0), color),  //6
+        VertexFormat(glm::vec3(-25, -2, 0), color), //7
+    };
+    Mesh* lifeBar = new Mesh(name);
+    std::vector<unsigned int> indices = {
+                                        0,4,1,
+                                        4,5,1,
+                                        1,5,6,
+                                        1,6,2,
+                                        7,2,6,
+                                        7,3,2,
+                                        0,3,4,
+                                        4,7,3 };
+
+    if (!fill) {
+        lifeBar->SetDrawMode(GL_LINE_LOOP);
+    }
+    else {
+        // Draw 2 triangles. Add the remaining 2 indices
+        indices.push_back(0);
+        indices.push_back(2);
+    }
+    lifeBar->InitFromData(vertices, indices);
+    return lifeBar;
+
+
+}
+
+Mesh* CreateLife(
+    const std::string& name,
+    glm::vec3 color)
+{
+    std::vector<VertexFormat> vertices =
+    {
+        VertexFormat(glm::vec3(-0, 2, 0), color),  //0
+        VertexFormat(glm::vec3(50, 2, 0), color),   //1
+        VertexFormat(glm::vec3(50, -2, 0), color),  //2
+        VertexFormat(glm::vec3(0, -2, 0), color), //3
+    };
+    Mesh* life = new Mesh(name);
+    std::vector<unsigned int> indices = {
+                                        0,3,2,
+                                        0,2,1 };
+    life->InitFromData(vertices, indices);
+    return life;
+}
+
 
 DronesGame::DronesGame()
 {
@@ -528,6 +588,10 @@ void DronesGame::Init()
     meshes[dropZone->GetMeshID()] = dropZone;
     Mesh* pointer = CreatePointer("pointer");
     meshes[pointer->GetMeshID()] = pointer;
+    Mesh* lifebar = CreateLifeBar("lifeBar",glm::vec3(0,0,0),true);
+    meshes[lifebar->GetMeshID()] = lifebar;
+    Mesh* life = CreateLife("life", glm::vec3(1, 0, 0));
+    meshes[life->GetMeshID()] = life;
 
     // TODO(student): After you implement the changing of the projection
     // parameters, remove hardcodings of these parameters
@@ -548,7 +612,9 @@ void DronesGame::Init()
     }
     srand(time(0));
     random1 = rand() % (trees.size());
-    random2 = std::rand() % (trees.size());
+    random2 = rand() % (trees.size());
+    while (random2 == random1)
+        random2 = rand() % (trees.size());
     /*cout << trees[random2].first << " " << trees[random2].second << "\n";
     cout << centers[random2].first << " " << centers[random2].second << "\n";*/
 }
@@ -565,10 +631,11 @@ void DronesGame::FrameStart()
 
 void DronesGame::ReinitializeMap() {
     int old_random1 = random1;
-    while (random1 == old_random1) {
+    while (random1 == old_random1|| random1 == random2) {
         srand(time(0));
         random1 = rand() % (trees.size());
     }
+    
 }
 
 void DronesGame::generate_trees(float deltaTimeSeconds) {
@@ -662,8 +729,6 @@ void DronesGame::RenderMesh(Mesh* mesh, Shader* shader, const glm::mat4& modelMa
 
 bool DronesGame::CheckCollision() {
     glm::vec3 position = camera->GetTargetPosition();
-    glm::vec3 size = glm::vec3(40, 6, 40);
-
     for (int i = 0; i < trees.size(); i++) {
         if (i == random1 || i == random2) {
             continue;
@@ -697,6 +762,7 @@ bool DronesGame::CheckCollision() {
 void DronesGame::RenderDrone() {
     glm::mat4 modelMatrix = glm::mat4(1);
     modelMatrix = glm::translate(modelMatrix, camera->GetTargetPosition());
+    RenderScoreBar(modelMatrix);
     modelMatrix = glm::scale(modelMatrix, glm::vec3(0.01f));
     modelMatrix = glm::rotate(modelMatrix, RADIANS(45.0f) + RADIANS(drone_rotation_angle), glm::vec3(0, 1, 0));
     modelMatrix = glm::rotate(modelMatrix, RADIANS(tilt_forward), glm::vec3(1, 0, 1));
@@ -714,6 +780,18 @@ void DronesGame::RenderDrone() {
     }
     
 }
+
+void DronesGame::RenderScoreBar(glm::mat4 modelMatrix) {
+    
+    modelMatrix = glm::scale(modelMatrix, glm::vec3(0.01));
+    modelMatrix = glm::rotate(modelMatrix, RADIANS(drone_rotation_angle), glm::vec3(0, 1, 0));
+    modelMatrix = glm::translate(modelMatrix, glm::vec3(140, 98, 0));
+    RenderMesh(meshes["lifeBar"], shaders["VertexColor"], modelMatrix);
+    modelMatrix = glm::translate(modelMatrix, glm::vec3(-25, 0, 0));
+    modelMatrix = glm::scale(modelMatrix, glm::vec3(float(score) / 50.0f, 1, 1));
+    RenderMesh(meshes["life"], shaders["VertexColor"], modelMatrix);
+}
+
 void DronesGame::RenderPackage(glm::mat4 modelMatrix) {
     modelMatrix = glm::translate(modelMatrix, glm::vec3(0, -40, 0));
     modelMatrix = glm::scale(modelMatrix, glm::vec3(60));
@@ -841,10 +919,14 @@ void DronesGame::OnKeyPress(int key, int mods)
         float my_y = camera->GetTargetPosition().y;
         float my_z = camera->GetTargetPosition().z;
         float distance = std::sqrt(std::pow(my_x - x, 2) + std::pow(my_y - y, 2) + std::pow(my_z - z, 2));
-        cout << distance << "\n";
+        
         if (distance <= 2) {
+            cout << "Package picked up!\n\n";
             picked = true;
             time1 = 0;
+        }
+        else {
+            cout << "Get closer to the package!\n";
         }
     }
 
@@ -855,9 +937,16 @@ void DronesGame::OnKeyPress(int key, int mods)
         float my_x = camera->GetTargetPosition().x;
         float my_y = camera->GetTargetPosition().y;
         float my_z = camera->GetTargetPosition().z;
-        float distance = std::sqrt(std::pow(my_x - x, 2) + std::pow(my_y - y, 2) + std::pow(my_z - z, 2));
-        if (distance <= 2) {
+        float distance = sqrt(pow(my_x - x, 2) + pow(my_z - z, 2));
+        if (distance <= 4.8 && my_y < 3) {
+            cout << "Package delivered succesfully!\nNew package spawned.\n\n";
             inDropZone = true;
+        }
+        else if (my_y >= 3) {
+            cout << "Go lower to safely deliver the package!\n";
+        }
+        else {
+            cout << "Go to the drop zone!";
         }
     }
     if (key == GLFW_KEY_0) {
