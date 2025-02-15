@@ -36,9 +36,10 @@ namespace m1
         void RenderArrow();
         void generate_trees(float deltaTimeSeconds);
         void RenderPackage(glm::mat4 modelMatrix);
+        void RenderMiniViewport(float deltaTimeSeconds);
         bool CheckCollision();
         void ReinitializeMap();
-        void DronesGame::RenderScoreBar(glm::mat4 modelMatrix);
+        void RenderScoreBar(glm::mat4 modelMatrix);
         void OnInputUpdate(float deltaTime, int mods) override;
         void OnKeyPress(int key, int mods) override;
         void OnKeyRelease(int key, int mods) override;
@@ -49,7 +50,7 @@ namespace m1
         void OnWindowResize(int width, int height) override;
 
     protected:
-        implemented::DroneCamera* camera, *camera_above;
+        implemented::DroneCamera* camera, *camera_above, *main_camera;
         glm::mat4 projectionMatrix, projectionMatrix_1;
         bool renderCameraTarget;
         float fov;

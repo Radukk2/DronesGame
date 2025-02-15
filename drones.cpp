@@ -129,16 +129,16 @@ Mesh* CreateDrone(const std::string& name, glm::vec3 color) {
 
         16, 19, 18,
         16, 17, 17,
-        
+
         17, 18, 22,
         17, 22, 21,
 
         19, 23, 22,
         19, 22, 18,
-        
+
         23, 20, 21,
         23, 21, 22,
-        
+
         20, 23, 19,
         20, 19, 16,
         //cube 2
@@ -217,10 +217,10 @@ Mesh* CreatePropeller(const std::string& name, glm::vec3 color) {
         0, 1, 2,
         0, 3, 2,
         4, 7, 3,
-        4, 3, 0, 
-        4, 0, 1, 
+        4, 3, 0,
+        4, 0, 1,
         4, 1, 5,
-        1, 2, 6, 
+        1, 2, 6,
         1, 6, 5,
         3, 7, 6,
         3, 6, 2,
@@ -233,7 +233,7 @@ Mesh* CreatePropeller(const std::string& name, glm::vec3 color) {
 
 Mesh* CreateArrow(const std::string& name, glm::vec3 color) {
     vector<VertexFormat> vertices = {
-        VertexFormat(glm::vec3(0, 0, -20), color),
+        VertexFormat(glm::vec3(0, 0, -10), color),
         VertexFormat(glm::vec3(0, 0, 0), color),
         VertexFormat(glm::vec3(-2, 0, -2), color),
         VertexFormat(glm::vec3(2, 0, -2), color)
@@ -258,7 +258,7 @@ Mesh* CreateTree(const std::string& name) {
     for (int i = 0; i <= 200; ++i) {
         float angle = i * angleStep;
         vertices.push_back(VertexFormat(
-            glm::vec3(5 * cos(angle),-15,  5 * sin(angle)),
+            glm::vec3(5 * cos(angle), -15, 5 * sin(angle)),
             brown
         ));
 
@@ -308,7 +308,7 @@ Mesh* CreateTree(const std::string& name) {
             indices.push_back(404 + i + 2);
         }
     }
-    int coneTipIndex = vertices.size(); 
+    int coneTipIndex = vertices.size();
     vertices.push_back(VertexFormat(glm::vec3(0, 42, 0), green)); // 606
     for (int i = 0; i < 200; i++) {
         indices.push_back(606);
@@ -434,7 +434,7 @@ Mesh* CreatePointer(const std::string& name) {
         7, 9, 8,
         12, 10, 11,
         12, 11, 13,
-        1, 0, 7, 
+        1, 0, 7,
         1, 8, 7,
         2, 0, 7,
         2, 7, 9,
@@ -552,9 +552,10 @@ void DronesGame::Init()
     score = 0;
 
     camera = new implemented::DroneCamera();
-    camera->Set(glm::vec3(0, 2, 3.5f), glm::vec3(0, 1, 0), glm::vec3(0, 1, 0));
+    main_camera = new implemented::DroneCamera();
+    main_camera->Set(glm::vec3(0, 2, 3.5f), glm::vec3(0, 1, 0), glm::vec3(0, 1, 0));
     camera_above = new implemented::DroneCamera();
-    camera_above->Set(glm::vec3(0, 62, 3.5f), glm::vec3(0, 2, 3.5f), glm::vec3(0, 0, -1));
+    camera_above->Set(glm::vec3(0, 62, 3.5f), glm::vec3(0, 2, 3.5f), glm::vec3(0, 1, 0));
 
     {
         Shader* shader = new Shader("Shader");
@@ -563,7 +564,7 @@ void DronesGame::Init()
         shader->CreateAndLink();
         shaders[shader->GetName()] = shader;
     }
-    
+
     {
         Mesh* mesh = new Mesh("box");
         mesh->LoadMesh(PATH_JOIN(window->props.selfDir, RESOURCE_PATH::MODELS, "primitives"), "box.obj");
@@ -588,7 +589,7 @@ void DronesGame::Init()
     meshes[dropZone->GetMeshID()] = dropZone;
     Mesh* pointer = CreatePointer("pointer");
     meshes[pointer->GetMeshID()] = pointer;
-    Mesh* lifebar = CreateLifeBar("lifeBar",glm::vec3(0,0,0),true);
+    Mesh* lifebar = CreateLifeBar("lifeBar", glm::vec3(0, 0, 0), true);
     meshes[lifebar->GetMeshID()] = lifebar;
     Mesh* life = CreateLife("life", glm::vec3(1, 0, 0));
     meshes[life->GetMeshID()] = life;
@@ -596,12 +597,12 @@ void DronesGame::Init()
     // TODO(student): After you implement the changing of the projection
     // parameters, remove hardcodings of these parameters
     projectionMatrix = glm::perspective(RADIANS(60), window->props.aspectRatio, 0.01f, 200.0f);
-   
+
     projectionMatrix_1 = glm::ortho(RADIANS(60), window->props.aspectRatio, 0.01f, 200.0f);
 
     glm::ivec2 resolution = window->GetResolution();
-    miniViewportArea = ViewportArea(50, 50, resolution.x / 5.f, resolution.y / 5.f);
-    
+    miniViewportArea = ViewportArea(50, 50, 250, 250);
+
     for (float i = -25; i < 25; i += 10) {
         for (float j = -25; j < 25; j += 10) {
             float i_barrier = i + 9;
@@ -631,11 +632,11 @@ void DronesGame::FrameStart()
 
 void DronesGame::ReinitializeMap() {
     int old_random1 = random1;
-    while (random1 == old_random1|| random1 == random2) {
+    while (random1 == old_random1 || random1 == random2) {
         srand(time(0));
         random1 = rand() % (trees.size());
     }
-    
+
 }
 
 void DronesGame::generate_trees(float deltaTimeSeconds) {
@@ -648,7 +649,7 @@ void DronesGame::generate_trees(float deltaTimeSeconds) {
     }
     for (int i = 0; i < trees.size(); i++) {
         auto it = trees[i], it_2 = centers[i];
-        if (i == random1 ) {
+        if (i == random1) {
             if (!picked) {
                 glm::mat4 modelMatrix = glm::mat4(1);
                 modelMatrix = glm::translate(modelMatrix, glm::vec3(it.first, 1, it.second));
@@ -656,7 +657,7 @@ void DronesGame::generate_trees(float deltaTimeSeconds) {
                 RenderMesh(meshes["box"], shaders["VertexColor"], modelMatrix);
             }
             continue;
-        }   
+        }
         if (i == random2) {
             glm::mat4 modelMatrix = glm::mat4(1);
             modelMatrix = glm::translate(modelMatrix, glm::vec3(it_2.first, 0, it_2.second));
@@ -677,33 +678,49 @@ void DronesGame::generate_trees(float deltaTimeSeconds) {
 
 void DronesGame::Update(float deltaTimeSeconds)
 {
+    camera = main_camera;
     glm::ivec2 resolution = window->GetResolution();
-    glViewport(0, 0, resolution.x, resolution.y);
+    glViewport(0, 0, resolution.x, resolution.y); 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     projectionMatrix = glm::perspective(RADIANS(60), window->props.aspectRatio, 0.01f, 200.0f);
     RenderDrone();
     glm::mat4 modelMatrix = glm::mat4(1);
     modelMatrix = glm::translate(modelMatrix, glm::vec3(-25, 0, -25));
     RenderMesh(meshes["terrain"], shaders["Shader"], modelMatrix);
+    RenderMesh(meshes["terrain"], shaders["Shader"], modelMatrix);
     modelMatrix = glm::mat4(1);
     modelMatrix = glm::scale(modelMatrix, glm::vec3(0.05f));
     generate_trees(deltaTimeSeconds);
+    glEnable(GL_SCISSOR_TEST);
+    glScissor(miniViewportArea.x - 3, miniViewportArea.y - 3, miniViewportArea.width + 6, miniViewportArea.height + 6);
+    glClearColor(0.537f, 0.812f, 0.941f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    camera = camera_above;
+    camera->forward = glm::vec3(0, -1, 0);
+    camera->position = glm::vec3(0, 60, 0);
+    camera->up = glm::vec3(0, 0, 1);
+    glScissor(miniViewportArea.x, miniViewportArea.y, miniViewportArea.width, miniViewportArea.height);
     glViewport(miniViewportArea.x, miniViewportArea.y, miniViewportArea.width, miniViewportArea.height);
-    glClear(GL_DEPTH_BUFFER_BIT);
-    projectionMatrix = glm::ortho(-1.0f, 1.0f, -1.0f, 1.0f, 0.01f, 200.0f);
-    camera_above->position.x = camera->GetTargetPosition().x;
-    camera_above->position.y = camera->GetTargetPosition().y ;
-    camera_above->position.z = camera->GetTargetPosition().z;
-    DrawCoordinateSystem(camera_above->GetViewMatrix(), projectionMatrix);
+    projectionMatrix = glm::ortho(-25.0f, 25.0f, -25.0f, 25.0f, 0.01f, 200.0f);
     modelMatrix = glm::mat4(1);
     modelMatrix = glm::translate(modelMatrix, glm::vec3(-25, 0, -25));
+    modelMatrix = glm::scale(modelMatrix, glm::vec3(100));
     RenderMesh(meshes["terrain"], shaders["Shader"], modelMatrix);
+    generate_trees(deltaTimeSeconds);
+    RenderArrow();
+    glDisable(GL_SCISSOR_TEST);
+    camera = main_camera;
 }
 
+
+
 void DronesGame::RenderArrow() {
-    camera_above->GetTargetPosition();
     glm::mat4 modelMatrix = glm::mat4(1);
-    modelMatrix = glm::scale(modelMatrix, glm::vec3(0.1f));
+    modelMatrix = glm::translate(modelMatrix, main_camera->GetTargetPosition());
+    modelMatrix = glm::translate(modelMatrix, glm::vec3(0,1,0));
+    modelMatrix = glm::scale(modelMatrix, glm::vec3(0.5f));
+    modelMatrix = glm::rotate(modelMatrix,  RADIANS(drone_rotation_angle), glm::vec3(0, 1, 0));
+
     RenderMesh(meshes["arrow"], shaders["VertexColor"], modelMatrix);
 }
 
@@ -766,7 +783,7 @@ void DronesGame::RenderDrone() {
     modelMatrix = glm::scale(modelMatrix, glm::vec3(0.01f));
     modelMatrix = glm::rotate(modelMatrix, RADIANS(45.0f) + RADIANS(drone_rotation_angle), glm::vec3(0, 1, 0));
     modelMatrix = glm::rotate(modelMatrix, RADIANS(tilt_forward), glm::vec3(1, 0, 1));
-    modelMatrix = glm::rotate(modelMatrix, RADIANS(45.0f) , glm::vec3(0, 1, 0));
+    modelMatrix = glm::rotate(modelMatrix, RADIANS(45.0f), glm::vec3(0, 1, 0));
     modelMatrix = glm::rotate(modelMatrix, RADIANS(tilt_right), glm::vec3(1, 0, 0));
     modelMatrix = glm::rotate(modelMatrix, RADIANS(-45.0f), glm::vec3(0, 1, 0));
     RenderMesh(meshes["drone"], shaders["VertexColor"], modelMatrix);
@@ -778,11 +795,11 @@ void DronesGame::RenderDrone() {
     if (picked && !inDropZone) {
         RenderPackage(modelMatrix);
     }
-    
+
 }
 
 void DronesGame::RenderScoreBar(glm::mat4 modelMatrix) {
-    
+
     modelMatrix = glm::scale(modelMatrix, glm::vec3(0.01));
     modelMatrix = glm::rotate(modelMatrix, RADIANS(drone_rotation_angle), glm::vec3(0, 1, 0));
     modelMatrix = glm::translate(modelMatrix, glm::vec3(140, 98, 0));
@@ -816,85 +833,85 @@ void DronesGame::RenderPropeller(float angle, glm::mat4 modelMatrix) {
 
 void DronesGame::OnInputUpdate(float deltaTime, int mods)
 {
-        float cameraSpeed = 2.0f;
-        if (window->KeyHold(GLFW_KEY_W))
-        {
-            //camera_above->MoveForward(0.01 * (cameraSpeed + (deltaTime * acceleration)) / miniViewportArea.y * window->GetResolution().y );
-                camera->MoveForward(0.01 * cameraSpeed);
-            if (CheckCollision())
-                camera->MoveForward(-0.01 * cameraSpeed);
-                if (tilt_forward > -40)
-                    tilt_forward -= 0.5;
-            // TODO(student): Translate the camera forward
-        }
+    float cameraSpeed = 2.0f;
+    if (window->KeyHold(GLFW_KEY_W))
+    {
+        //camera_above->MoveForward(0.01 * (cameraSpeed + (deltaTime * acceleration)) / miniViewportArea.y * window->GetResolution().y );
+        camera->MoveForward(0.01 * cameraSpeed);
+        if (CheckCollision())
+            camera->MoveForward(-0.01 * cameraSpeed);
+        if (tilt_forward > -40)
+            tilt_forward -= 0.5;
+        // TODO(student): Translate the camera forward
+    }
 
-        if (window->KeyHold(GLFW_KEY_A)) {
-                camera->TranslateRight(-0.01 * cameraSpeed);
-                if (CheckCollision())
-                    camera->TranslateRight(0.01 * cameraSpeed);
-                if (tilt_right > -40)
-                    tilt_right -= 0.5;
-            // TODO(student): Translate the camera to the left
-        }
+    if (window->KeyHold(GLFW_KEY_A)) {
+        camera->TranslateRight(-0.01 * cameraSpeed);
+        if (CheckCollision())
+            camera->TranslateRight(0.01 * cameraSpeed);
+        if (tilt_right > -40)
+            tilt_right -= 0.5;
+        // TODO(student): Translate the camera to the left
+    }
 
-        if (window->KeyHold(GLFW_KEY_S)) {
-            // TODO(student): Translate the camera backward
-                camera->MoveForward(-0.01 * cameraSpeed);
-                if (CheckCollision())
-                    camera->MoveForward(0.01 * cameraSpeed);
-                if (tilt_forward < 40)
-                    tilt_forward += 0.5;
-        }
+    if (window->KeyHold(GLFW_KEY_S)) {
+        // TODO(student): Translate the camera backward
+        camera->MoveForward(-0.01 * cameraSpeed);
+        if (CheckCollision())
+            camera->MoveForward(0.01 * cameraSpeed);
+        if (tilt_forward < 40)
+            tilt_forward += 0.5;
+    }
 
-        if (window->KeyHold(GLFW_KEY_D)) {
-            // TODO(student): Translate the camera to the right
-                camera->TranslateRight(0.01 * cameraSpeed);
-                if (CheckCollision())
-                    camera->TranslateRight(-0.01 * cameraSpeed);
-                if (tilt_right < 40)
-                    tilt_right += 0.5;
-        }
+    if (window->KeyHold(GLFW_KEY_D)) {
+        // TODO(student): Translate the camera to the right
+        camera->TranslateRight(0.01 * cameraSpeed);
+        if (CheckCollision())
+            camera->TranslateRight(-0.01 * cameraSpeed);
+        if (tilt_right < 40)
+            tilt_right += 0.5;
+    }
 
 
-        if (window->KeyHold(GLFW_KEY_SPACE)) {
+    if (window->KeyHold(GLFW_KEY_SPACE)) {
         //    // TODO(student): Translate the camera downward
-            camera->TranslateUpward(0.01 * cameraSpeed);
+        camera->TranslateUpward(0.01 * cameraSpeed);
 
-        }
-        else {
-            if (camera->GetTargetPosition().y > 1 && !stabilize)
-                camera->TranslateUpward(-0.01 * cameraSpeed);
-        }
+    }
+    else {
+        if (camera->GetTargetPosition().y > 1 && !stabilize)
+            camera->TranslateUpward(-0.01 * cameraSpeed);
+    }
 
-        if (window->KeyHold(GLFW_KEY_E)) {
-            // TODO(student): Translate the camera upward
-            if (camera->GetTargetPosition().y > 1)
-                camera->TranslateUpward(-0.01 * cameraSpeed);
-        }
+    if (window->KeyHold(GLFW_KEY_E)) {
+        // TODO(student): Translate the camera upward
+        if (camera->GetTargetPosition().y > 1)
+            camera->TranslateUpward(-0.01 * cameraSpeed);
+    }
 
-        if (window->KeyHold(GLFW_KEY_RIGHT)) {
-            drone_rotation_angle -= 2.5;
-            camera->RotateThirdPerson_OY(RADIANS(-2.5));
-        }
+    if (window->KeyHold(GLFW_KEY_RIGHT)) {
+        drone_rotation_angle -= 2.5;
+        camera->RotateThirdPerson_OY(RADIANS(-2.5));
+    }
 
-        if (window->KeyHold(GLFW_KEY_LEFT)) {
-            drone_rotation_angle += 2.5;
-            camera->RotateThirdPerson_OY(RADIANS(2.5));
+    if (window->KeyHold(GLFW_KEY_LEFT)) {
+        drone_rotation_angle += 2.5;
+        camera->RotateThirdPerson_OY(RADIANS(2.5));
+    }
+    if (!window->KeyHold(GLFW_KEY_D && !window->KeyHold(GLFW_KEY_A) && !window->KeyHold(GLFW_KEY_S) && !window->KeyHold(GLFW_KEY_W))) {
+        if (tilt_right > 0 && !window->KeyHold(GLFW_KEY_D)) {
+            tilt_right -= 0.5;
         }
-        if (!window->KeyHold(GLFW_KEY_D && !window->KeyHold(GLFW_KEY_A) && !window->KeyHold(GLFW_KEY_S) && !window->KeyHold(GLFW_KEY_W))) {
-            if (tilt_right > 0 && !window->KeyHold(GLFW_KEY_D)) {
-                tilt_right -= 0.5;
-            }
-            if (tilt_right < 0 && !window->KeyHold(GLFW_KEY_A)) {
-                tilt_right += 0.5;
-            }
-            if (tilt_forward < 0 && !window->KeyHold(GLFW_KEY_W)) {
-                tilt_forward += 0.5;
-            }
-            if (tilt_forward > 0 && !window->KeyHold(GLFW_KEY_S)) {
-                tilt_forward -= 0.5;
-            }
+        if (tilt_right < 0 && !window->KeyHold(GLFW_KEY_A)) {
+            tilt_right += 0.5;
         }
+        if (tilt_forward < 0 && !window->KeyHold(GLFW_KEY_W)) {
+            tilt_forward += 0.5;
+        }
+        if (tilt_forward > 0 && !window->KeyHold(GLFW_KEY_S)) {
+            tilt_forward -= 0.5;
+        }
+    }
     //}
 
     // TODO(student): Change projection parameters. Declare any extra
@@ -919,7 +936,7 @@ void DronesGame::OnKeyPress(int key, int mods)
         float my_y = camera->GetTargetPosition().y;
         float my_z = camera->GetTargetPosition().z;
         float distance = std::sqrt(std::pow(my_x - x, 2) + std::pow(my_y - y, 2) + std::pow(my_z - z, 2));
-        
+
         if (distance <= 2) {
             cout << "Package picked up!\n\n";
             picked = true;
